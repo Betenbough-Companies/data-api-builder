@@ -1,21 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using System;
-using System.Diagnostics;
-using System.Linq;
+//using System;
+//using System.Diagnostics;
+//using System.Linq;
 using System.Net;
-using System.Net.Mime;
+//using System.Net.Mime;
 using System.Threading.Tasks;
 using Azure.DataApiBuilder.Config.ObjectModel;
 using Azure.DataApiBuilder.Core.Configurations;
-using Azure.DataApiBuilder.Core.Models;
+//using Azure.DataApiBuilder.Core.Models;
 using Azure.DataApiBuilder.Core.Services;
-using Azure.DataApiBuilder.Core.Telemetry;
+//using Azure.DataApiBuilder.Core.Telemetry;
 using Azure.DataApiBuilder.Service.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
+//using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.DataApiBuilder.Service.Controllers
@@ -32,12 +32,12 @@ namespace Azure.DataApiBuilder.Service.Controllers
         /// <summary>
         /// Service providing REST Api executions.
         /// </summary>
-        private readonly RestService _restService;
+        //private readonly RestService _restService;
 
-        /// <summary>
-        /// OpenAPI description document creation service.
-        /// </summary>
-        private readonly IOpenApiDocumentor _openApiDocumentor;
+        ///// <summary>
+        ///// OpenAPI description document creation service.
+        ///// </summary>
+        //private readonly IOpenApiDocumentor _openApiDocumentor;
         /// <summary>
         /// String representing the value associated with "code" for a server error
         /// </summary>
@@ -50,19 +50,19 @@ namespace Azure.DataApiBuilder.Service.Controllers
         /// </summary>
         public const string REDIRECTED_ROUTE = "favicon.ico";
 
-        private readonly ILogger<RestController> _logger;
+        //private readonly ILogger<RestController> _logger;
 
-        private readonly RuntimeConfigProvider _runtimeConfigProvider;
+        //private readonly RuntimeConfigProvider _runtimeConfigProvider;
 
         /// <summary>
         /// Constructor.
         /// </summary>
         public RestController(RuntimeConfigProvider runtimeConfigProvider, RestService restService, IOpenApiDocumentor openApiDocumentor, ILogger<RestController> logger)
         {
-            _runtimeConfigProvider = runtimeConfigProvider;
-            _restService = restService;
-            _openApiDocumentor = openApiDocumentor;
-            _logger = logger;
+            //_runtimeConfigProvider = runtimeConfigProvider;
+            //_restService = restService;
+            //_openApiDocumentor = openApiDocumentor;
+            //_logger = logger;
         }
 
         /// <summary>
@@ -193,121 +193,128 @@ namespace Azure.DataApiBuilder.Service.Controllers
             string route,
             EntityActionOperation operationType)
         {
-            if (route.Equals(REDIRECTED_ROUTE))
-            {
-                return NotFound();
-            }
+            string r = route;
+            r.ToString();
+            EntityActionOperation o = operationType;
+            o.ToString();
+            await Task.FromResult(r);
+            return Ok();
 
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            // This activity tracks the entire REST request.
-            using Activity? activity = TelemetryTracesHelper.DABActivitySource.StartActivity($"{HttpContext.Request.Method} {(route.Split('/').Length > 1 ? route.Split('/')[1] : string.Empty)}");
+            //if (route.Equals(REDIRECTED_ROUTE))
+            //{
+            //    return NotFound();
+            //}
 
-            try
-            {
-                TelemetryMetricsHelper.IncrementActiveRequests(ApiType.REST);
+            //Stopwatch stopwatch = Stopwatch.StartNew();
+            //// This activity tracks the entire REST request.
+            //using Activity? activity = TelemetryTracesHelper.DABActivitySource.StartActivity($"{HttpContext.Request.Method} {(route.Split('/').Length > 1 ? route.Split('/')[1] : string.Empty)}");
 
-                if (activity is not null)
-                {
-                    activity.TrackMainControllerActivityStarted(
-                        Enum.Parse<HttpMethod>(HttpContext.Request.Method, ignoreCase: true),
-                        HttpContext.Request.Headers["User-Agent"].ToString(),
-                        operationType.ToString(),
-                        route,
-                        HttpContext.Request.QueryString.ToString(),
-                        HttpContext.Request.Headers["X-MS-API-ROLE"].FirstOrDefault() ?? HttpContext.User.FindFirst("role")?.Value,
-                        ApiType.REST);
-                }
+            //try
+            //{
+            //    TelemetryMetricsHelper.IncrementActiveRequests(ApiType.REST);
 
-                // Validate the PathBase matches the configured REST path.
-                string routeAfterPathBase = _restService.GetRouteAfterPathBase(route);
+            //    if (activity is not null)
+            //    {
+            //        activity.TrackMainControllerActivityStarted(
+            //            Enum.Parse<HttpMethod>(HttpContext.Request.Method, ignoreCase: true),
+            //            HttpContext.Request.Headers["User-Agent"].ToString(),
+            //            operationType.ToString(),
+            //            route,
+            //            HttpContext.Request.QueryString.ToString(),
+            //            HttpContext.Request.Headers["X-MS-API-ROLE"].FirstOrDefault() ?? HttpContext.User.FindFirst("role")?.Value,
+            //            ApiType.REST);
+            //    }
 
-                // Explicitly handle OpenAPI description document retrieval requests.
-                if (string.Equals(routeAfterPathBase, OpenApiDocumentor.OPENAPI_ROUTE, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (_openApiDocumentor.TryGetDocument(out string? document))
-                    {
-                        return Content(document, MediaTypeNames.Application.Json);
-                    }
+            //    // Validate the PathBase matches the configured REST path.
+            //    string routeAfterPathBase = _restService.GetRouteAfterPathBase(route);
 
-                    return NotFound();
-                }
+            //    // Explicitly handle OpenAPI description document retrieval requests.
+            //    if (string.Equals(routeAfterPathBase, OpenApiDocumentor.OPENAPI_ROUTE, StringComparison.OrdinalIgnoreCase))
+            //    {
+            //        if (_openApiDocumentor.TryGetDocument(out string? document))
+            //        {
+            //            return Content(document, MediaTypeNames.Application.Json);
+            //        }
 
-                (string entityName, string primaryKeyRoute) = _restService.GetEntityNameAndPrimaryKeyRouteFromRoute(routeAfterPathBase);
+            //        return NotFound();
+            //    }
 
-                // This activity tracks the query execution. This will create a new activity nested under the REST request activity.
-                using Activity? queryActivity = TelemetryTracesHelper.DABActivitySource.StartActivity($"QUERY {entityName}");
-                IActionResult? result = await _restService.ExecuteAsync(entityName, operationType, primaryKeyRoute);
+            //    (string entityName, string primaryKeyRoute) = _restService.GetEntityNameAndPrimaryKeyRouteFromRoute(routeAfterPathBase);
 
-                RuntimeConfig runtimeConfig = _runtimeConfigProvider.GetConfig();
-                string dataSourceName = runtimeConfig.GetDataSourceNameFromEntityName(entityName);
-                DatabaseType databaseType = runtimeConfig.GetDataSourceFromDataSourceName(dataSourceName).DatabaseType;
+            //    // This activity tracks the query execution. This will create a new activity nested under the REST request activity.
+            //    using Activity? queryActivity = TelemetryTracesHelper.DABActivitySource.StartActivity($"QUERY {entityName}");
+            //    IActionResult? result = await _restService.ExecuteAsync(entityName, operationType, primaryKeyRoute);
 
-                if (queryActivity is not null)
-                {
-                    queryActivity.TrackQueryActivityStarted(
-                        databaseType,
-                        dataSourceName);
-                }
+            //    RuntimeConfig runtimeConfig = _runtimeConfigProvider.GetConfig();
+            //    string dataSourceName = runtimeConfig.GetDataSourceNameFromEntityName(entityName);
+            //    DatabaseType databaseType = runtimeConfig.GetDataSourceFromDataSourceName(dataSourceName).DatabaseType;
 
-                if (result is null)
-                {
-                    throw new DataApiBuilderException(
-                        message: $"Not Found",
-                        statusCode: HttpStatusCode.NotFound,
-                        subStatusCode: DataApiBuilderException.SubStatusCodes.EntityNotFound);
-                }
+            //    if (queryActivity is not null)
+            //    {
+            //        queryActivity.TrackQueryActivityStarted(
+            //            databaseType,
+            //            dataSourceName);
+            //    }
 
-                int statusCode = (result as ObjectResult)?.StatusCode ?? (result as StatusCodeResult)?.StatusCode ?? (result as JsonResult)?.StatusCode ?? 200;
-                if (activity is not null && activity.IsAllDataRequested)
-                {
-                    HttpStatusCode httpStatusCode = Enum.Parse<HttpStatusCode>(statusCode.ToString(), ignoreCase: true);
-                    activity.TrackMainControllerActivityFinished(httpStatusCode);
-                }
+            //    if (result is null)
+            //    {
+            //        throw new DataApiBuilderException(
+            //            message: $"Not Found",
+            //            statusCode: HttpStatusCode.NotFound,
+            //            subStatusCode: DataApiBuilderException.SubStatusCodes.EntityNotFound);
+            //    }
 
-                return result;
-            }
-            catch (DataApiBuilderException ex)
-            {
-                _logger.LogError(
-                    exception: ex,
-                    message: "{correlationId} Error handling REST request.",
-                    HttpContextExtensions.GetLoggerCorrelationId(HttpContext));
+            //    int statusCode = (result as ObjectResult)?.StatusCode ?? (result as StatusCodeResult)?.StatusCode ?? (result as JsonResult)?.StatusCode ?? 200;
+            //    if (activity is not null && activity.IsAllDataRequested)
+            //    {
+            //        HttpStatusCode httpStatusCode = Enum.Parse<HttpStatusCode>(statusCode.ToString(), ignoreCase: true);
+            //        activity.TrackMainControllerActivityFinished(httpStatusCode);
+            //    }
 
-                Response.StatusCode = (int)ex.StatusCode;
-                activity?.TrackMainControllerActivityFinishedWithException(ex, ex.StatusCode);
+            //    return result;
+            //}
+            //catch (DataApiBuilderException ex)
+            //{
+            //    _logger.LogError(
+            //        exception: ex,
+            //        message: "{correlationId} Error handling REST request.",
+            //        HttpContextExtensions.GetLoggerCorrelationId(HttpContext));
 
-                HttpMethod method = Enum.Parse<HttpMethod>(HttpContext.Request.Method, ignoreCase: true);
-                TelemetryMetricsHelper.TrackError(method, ex.StatusCode, route, ApiType.REST, ex);
-                return ErrorResponse(ex.SubStatusCode.ToString(), ex.Message, ex.StatusCode);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    exception: ex,
-                    message: "{correlationId} Internal server error occured during REST request processing.",
-                    HttpContextExtensions.GetLoggerCorrelationId(HttpContext));
+            //    Response.StatusCode = (int)ex.StatusCode;
+            //    activity?.TrackMainControllerActivityFinishedWithException(ex, ex.StatusCode);
 
-                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            //    HttpMethod method = Enum.Parse<HttpMethod>(HttpContext.Request.Method, ignoreCase: true);
+            //    TelemetryMetricsHelper.TrackError(method, ex.StatusCode, route, ApiType.REST, ex);
+            //    return ErrorResponse(ex.SubStatusCode.ToString(), ex.Message, ex.StatusCode);
+            //}
+            //catch (Exception ex)
+            //{
+            //    _logger.LogError(
+            //        exception: ex,
+            //        message: "{correlationId} Internal server error occured during REST request processing.",
+            //        HttpContextExtensions.GetLoggerCorrelationId(HttpContext));
 
-                HttpMethod method = Enum.Parse<HttpMethod>(HttpContext.Request.Method, ignoreCase: true);
-                activity?.TrackMainControllerActivityFinishedWithException(ex, HttpStatusCode.InternalServerError);
+            //    Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
-                TelemetryMetricsHelper.TrackError(method, HttpStatusCode.InternalServerError, route, ApiType.REST, ex);
-                return ErrorResponse(
-                    DataApiBuilderException.SubStatusCodes.UnexpectedError.ToString(),
-                    SERVER_ERROR,
-                    HttpStatusCode.InternalServerError);
-            }
-            finally
-            {
-                stopwatch.Stop();
-                HttpMethod method = Enum.Parse<HttpMethod>(HttpContext.Request.Method, ignoreCase: true);
-                HttpStatusCode httpStatusCode = Enum.Parse<HttpStatusCode>(Response.StatusCode.ToString(), ignoreCase: true);
-                TelemetryMetricsHelper.TrackRequest(method, httpStatusCode, route, ApiType.REST);
-                TelemetryMetricsHelper.TrackRequestDuration(method, httpStatusCode, route, ApiType.REST, stopwatch.Elapsed);
+            //    HttpMethod method = Enum.Parse<HttpMethod>(HttpContext.Request.Method, ignoreCase: true);
+            //    activity?.TrackMainControllerActivityFinishedWithException(ex, HttpStatusCode.InternalServerError);
 
-                TelemetryMetricsHelper.DecrementActiveRequests(ApiType.REST);
-            }
+            //    TelemetryMetricsHelper.TrackError(method, HttpStatusCode.InternalServerError, route, ApiType.REST, ex);
+            //    return ErrorResponse(
+            //        DataApiBuilderException.SubStatusCodes.UnexpectedError.ToString(),
+            //        SERVER_ERROR,
+            //        HttpStatusCode.InternalServerError);
+            //}
+            //finally
+            //{
+            //    stopwatch.Stop();
+            //    HttpMethod method = Enum.Parse<HttpMethod>(HttpContext.Request.Method, ignoreCase: true);
+            //    HttpStatusCode httpStatusCode = Enum.Parse<HttpStatusCode>(Response.StatusCode.ToString(), ignoreCase: true);
+            //    TelemetryMetricsHelper.TrackRequest(method, httpStatusCode, route, ApiType.REST);
+            //    TelemetryMetricsHelper.TrackRequestDuration(method, httpStatusCode, route, ApiType.REST, stopwatch.Elapsed);
+
+            //    TelemetryMetricsHelper.DecrementActiveRequests(ApiType.REST);
+            //}
         }
 
         /// <summary>
