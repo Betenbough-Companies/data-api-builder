@@ -6,7 +6,7 @@ on:
 env:
   AZURE_WEBAPP_NAME: prd-btb-cosu-dataapi-laqdtbvq5xlpc
   AZURE_WEBAPP_PACKAGE_PATH: Service\published
-  CONFIGURATION: Release
+  CONFIGURATION: Debug
   DOTNET_CORE_VERSION: 8.0.x
   WORKING_DIRECTORY: src/Service
 jobs:
