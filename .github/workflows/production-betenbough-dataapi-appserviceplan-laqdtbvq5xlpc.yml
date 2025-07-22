@@ -4,7 +4,7 @@ on:
     branches:
     - main
 env:
-  AZURE_WEBAPP_NAME: production-betenbough-dataapi-appserviceplan-laqdtbvq5xlpc
+  AZURE_WEBAPP_NAME: production-betenbough-dataapi-laqdtbvq5xlpc
   AZURE_WEBAPP_PACKAGE_PATH: Service\published
   CONFIGURATION: Release
   DOTNET_CORE_VERSION: 8.0.x
