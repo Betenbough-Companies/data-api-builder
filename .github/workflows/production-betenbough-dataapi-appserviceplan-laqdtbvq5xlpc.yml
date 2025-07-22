@@ -43,7 +43,7 @@ jobs:
     - name: Azure Login
       uses: azure/login@v2
       with:
-        creds: ${{ secrets.PRD_BTB_DATAAPI_LAQDTBVQ5XLPC_SPN }}
+        creds: ${{ secrets.AZURE_ENTRAID_APPLICATIONS_GITHUB_BETENBOUGHCOMPANIES_DATAAPIBUILDER_ACTION_DEPLOY }}
     - name: Deploy to Azure WebApp
       uses: azure/webapps-deploy@v2
       with:
