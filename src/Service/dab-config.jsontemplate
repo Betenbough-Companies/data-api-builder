@@ -1,0 +1,534 @@
+{
+  "$schema": "https://github.com/Azure/data-api-builder/releases/download/v1.5.56/dab.draft.schema.json",
+  "data-source": {
+    "database-type": "mssql",
+    "connection-string": "Data Source=all-shared-sqlmanagedinstance-laqdtbvq5xlpc.public.19f2e82eadc6.database.windows.net,3342;Initial Catalog=BetenboughDW_DWSnapshot;Persist Security Info=False;Pooling=False;Multiple Active Result Sets=False;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Packet Size=4096;Command Timeout=0;Authentication=ActiveDirectoryInteractive",
+    "options": {
+      "set-session-context": false
+    }
+  },
+  "runtime": {
+    "rest": {
+      "enabled": true,
+      "path": "/api",
+      "request-body-strict": true
+    },
+    "graphql": {
+      "enabled": true,
+      "path": "/graphql",
+      "allow-introspection": true
+    },
+    "host": {
+      "cors": {
+        "origins": [],
+        "allow-credentials": false
+      },
+      "authentication": {
+        "provider": "StaticWebApps"
+      },
+      "mode": "development"
+    }
+  },
+  "entities": {
+    "Homesites": {
+      "source": {
+        "object": "data-api.Homesites",
+        "type": "table",
+        "key-fields": [ "HomesiteId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "Homesite",
+          "plural": "Homesites"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Phase": {
+          "cardinality": "one",
+          "target.entity": "Phases",
+          "source.fields": [ "PhaseId" ],
+          "target.fields": [ "PhaseId" ]
+        },
+        "FloorPlan": {
+          "cardinality": "one",
+          "target.entity": "FloorPlans",
+          "source.fields": [ "FloorPlanId" ],
+          "target.fields": [ "FloorPlanId" ]
+        },
+        "Tasks": {
+          "cardinality": "many",
+          "target.entity": "Tasks",
+          "source.fields": [ "HomesiteId" ],
+          "target.fields": [ "HomesiteId" ]
+        },
+        "POs": {
+          "cardinality": "many",
+          "target.entity": "POs",
+          "source.fields": [ "HomesiteId" ],
+          "target.fields": [ "HomesiteId" ]
+        },
+        "City": {
+          "cardinality": "one",
+          "target.entity": "Cities",
+          "source.fields": [ "CityId" ],
+          "target.fields": [ "CityId" ]
+        }
+      }
+    },
+    "Agreements": {
+      "source": {
+        "object": "data-api.Agreements",
+        "type": "table",
+        "key-fields": [ "AgreementId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "Agreement",
+          "plural": "Agreements"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Homesite": {
+          "cardinality": "one",
+          "target.entity": "Homesites",
+          "source.fields": [ "HomesiteId" ],
+          "target.fields": [ "HomesiteId" ]
+        },
+        "AgreementEvents": {
+          "cardinality": "many",
+          "target.entity": "AgreementEvents",
+          "source.fields": [ "AgreementId" ],
+          "target.fields": [ "AgreementId" ]
+        }
+      }
+    },
+    "FloorPlans": {
+      "source": {
+        "object": "data-api.FloorPlans",
+        "type": "table",
+        "key-fields": [ "FloorPlanId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "FloorPlan",
+          "plural": "FloorPlans"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ]
+    },
+    "Phases": {
+      "source": {
+        "object": "data-api.Phases",
+        "type": "table",
+        "key-fields": [ "PhaseId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "Phase",
+          "plural": "Phases"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Community": {
+          "cardinality": "one",
+          "target.entity": "Communities",
+          "source.fields": [ "CommunityId" ],
+          "target.fields": [ "CommunityId" ]
+        },
+        "Homesites": {
+          "cardinality": "many",
+          "target.entity": "Homesites",
+          "source.fields": [ "PhaseId" ],
+          "target.fields": [ "PhaseId" ]
+        }
+      }
+    },
+    "Communities": {
+      "source": {
+        "object": "data-api.Communities",
+        "type": "table",
+        "key-fields": [ "CommunityId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "Community",
+          "plural": "Communities"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Region": {
+          "cardinality": "one",
+          "target.entity": "Regions",
+          "source.fields": [ "RegionId" ],
+          "target.fields": [ "RegionId" ]
+        },
+        "Phases": {
+          "cardinality": "many",
+          "target.entity": "Phases",
+          "source.fields": [ "CommunityId" ],
+          "target.fields": [ "CommunityId" ]
+        }
+      }
+    },
+    "Tasks": {
+      "source": {
+        "object": "data-api.Tasks",
+        "type": "table",
+        "key-fields": [ "TaskId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "Task",
+          "plural": "Tasks"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Homesite": {
+          "cardinality": "one",
+          "target.entity": "Homesites",
+          "source.fields": [ "HomesiteId" ],
+          "target.fields": [ "HomesiteId" ]
+        },
+        "Checklists": {
+          "cardinality": "many",
+          "target.entity": "Checklists",
+          "source.fields": [ "TaskId" ],
+          "target.fields": [ "TaskId" ]
+        }
+      }
+    },
+    "POs": {
+      "source": {
+        "object": "data-api.POs",
+        "type": "table",
+        "key-fields": [ "POID" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "PO",
+          "plural": "POs"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Homesites": {
+          "cardinality": "one",
+          "target.entity": "Homesites",
+          "source.fields": [ "HomesiteId" ],
+          "target.fields": [ "HomesiteId" ]
+        },
+        "POLines": {
+          "cardinality": "many",
+          "target.entity": "POLines",
+          "source.fields": [ "POID" ],
+          "target.fields": [ "POID" ]
+        }
+      }
+    },
+    "POLines": {
+      "source": {
+        "object": "data-api.POLines",
+        "type": "table",
+        "key-fields": [ "POLineId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "POLine",
+          "plural": "POLines"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "POs": {
+          "cardinality": "one",
+          "target.entity": "POs",
+          "source.fields": [ "POID" ],
+          "target.fields": [ "POID" ]
+        }
+      }
+    },
+    "Regions": {
+      "source": {
+        "object": "data-api.Regions",
+        "type": "table",
+        "key-fields": [ "RegionId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "Region",
+          "plural": "Regions"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Communities": {
+          "cardinality": "many",
+          "target.entity": "Communities",
+          "source.fields": [ "RegionId" ],
+          "target.fields": [ "RegionId" ]
+        }
+      }
+    },
+    "Cities": {
+      "source": {
+        "object": "data-api.Cities",
+        "type": "table",
+        "key-fields": [ "CityId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "City",
+          "plural": "Cities"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ]
+    },
+    "ConstructionSupport_AvailablesManagement": {
+      "source": {
+        "object": "data-api.ConstructionSupport_AvailablesManagement",
+        "type": "table",
+        "key-fields": [ "HomesiteId" ]
+      },
+      "graphql": {
+        "enabled": false,
+        "type": {
+          "singular": "ConstructionSupport_AvailableManagement",
+          "plural": "ConstructionSupport_AvailablesManagement"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Homesite": {
+          "cardinality": "one",
+          "target.entity": "Homesites",
+          "source.fields": [ "HomesiteId" ],
+          "target.fields": [ "HomesiteId" ]
+        }
+      }
+    },
+    "ProductTypes": {
+      "source": {
+        "object": "data-api.ProductTypes",
+        "type": "table",
+        "key-fields": [ "ProductTypeId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "ProductType",
+          "plural": "ProductTypes"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "FloorPlans": {
+          "cardinality": "many",
+          "target.entity": "FloorPlans",
+          "source.fields": [ "ProductTypeId" ],
+          "target.fields": [ "ProductTypeId" ]
+        },
+        "CashflowScenarioStarts": {
+          "cardinality": "many",
+          "target.entity": "CashflowScenarioStarts",
+          "source.fields": [ "ProductTypeId" ],
+          "target.fields": [ "ProductTypeId" ]
+        }
+      }
+    },
+    "CashflowScenarioStarts": {
+      "source": {
+        "object": "data-api.CashflowScenarioStarts",
+        "type": "table",
+        "key-fields": [ "Week", "RegionId", "ProductTypeId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "CashflowScenarioStart",
+          "plural": "CashflowScenarioStarts"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Region": {
+          "cardinality": "one",
+          "target.entity": "Regions",
+          "source.fields": [ "RegionId" ],
+          "target.fields": [ "RegionId" ]
+        },
+        "ProductType": {
+          "cardinality": "one",
+          "target.entity": "ProductTypes",
+          "source.fields": [ "ProductTypeId" ],
+          "target.fields": [ "ProductTypeId" ]
+        }
+      }
+    },
+    "HomesiteClassifications": {
+      "source": {
+        "object": "data-api.HomesiteClassifications",
+        "type": "table",
+        "key-fields": [ "HomesiteClassificationId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "HomesiteClassification",
+          "plural": "HomesiteClassifications"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Homesites": {
+          "cardinality": "many",
+          "target.entity": "Homesites",
+          "source.fields": [ "HomesiteClassificationId" ],
+          "target.fields": [ "HomesiteClassificationId" ]
+        }
+      }
+    },
+
+    "AgreementEvents": {
+      "source": {
+        "object": "data-api.AgreementEvents",
+        "type": "table",
+        "key-fields": [ "AgreementEventId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "AgreementEvent",
+          "plural": "AgreementEvents"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ]
+    },
+
+    "Checklists": {
+      "source": {
+        "object": "data-api.Checklists",
+        "type": "table",
+        "key-fields": [ "ChecklistId" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "Checklist",
+          "plural": "Checklists"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ]
+    }
+  }
+}
