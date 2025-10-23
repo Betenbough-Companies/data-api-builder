@@ -110,6 +110,7 @@
         <Content Include="..\..\schemas\dab.draft.schema.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+        <Content Include="dab-config.jsontemplate" />
     </ItemGroup>
 
     <ItemGroup>
