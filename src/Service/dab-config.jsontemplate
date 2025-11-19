@@ -358,35 +358,6 @@
         }
       ]
     },
-    "ConstructionSupport_AvailablesManagement": {
-      "source": {
-        "object": "data-api.ConstructionSupport_AvailablesManagement",
-        "type": "table",
-        "key-fields": [ "HomesiteId" ]
-      },
-      "graphql": {
-        "enabled": false,
-        "type": {
-          "singular": "ConstructionSupport_AvailableManagement",
-          "plural": "ConstructionSupport_AvailablesManagement"
-        }
-      },
-      "rest": { "enabled": true },
-      "permissions": [
-        {
-          "role": "anonymous",
-          "actions": [ { "action": "*" } ]
-        }
-      ],
-      "relationships": {
-        "Homesite": {
-          "cardinality": "one",
-          "target.entity": "Homesites",
-          "source.fields": [ "HomesiteId" ],
-          "target.fields": [ "HomesiteId" ]
-        }
-      }
-    },
     "ProductTypes": {
       "source": {
         "object": "data-api.ProductTypes",
