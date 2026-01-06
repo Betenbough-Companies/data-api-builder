@@ -1,215 +1,439 @@
-# Data API builder for Azure Databases
+# Betenbough Data API Builder
 
-[![NuGet Package](https://img.shields.io/nuget/v/microsoft.dataapibuilder.svg?color=success)](https://www.nuget.org/packages/Microsoft.DataApiBuilder)
-[![Nuget Downloads](https://img.shields.io/nuget/dt/Microsoft.DataApiBuilder)](https://www.nuget.org/packages/Microsoft.DataApiBuilder)
-[![Documentation](https://img.shields.io/badge/docs-website-%23fc0)](https://learn.microsoft.com/azure/data-api-builder/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+This repository contains a forked version of Azure Data API Builder configured to expose the BetenboughDW database via REST and GraphQL APIs. The API runs on Azure Web App: `production-betenbough-dataapi-laqdtbvq5xlpc`.
 
-[What's new?](https://learn.microsoft.com/azure/data-api-builder/whats-new)
+## 🎯 Quick Overview
 
-## Community
+**What is this?** A REST and GraphQL API that exposes database views from the BetenboughDW database without writing code.
 
-Join the Data API builder community! This sign up will help us maintain a list of interested developers to be part of our roadmap and to help us better understand the different ways DAB is being used. Sign up [here](https://forms.office.com/pages/responsepage.aspx?id=v4j5cvGGr0GRqy180BHbR1S1JdzGAxhDrefV-tBYtwZUNE1RWVo0SUVMTkRESUZLMVVOS0wwUFNVRy4u).
+**When do I use this?** When you need to expose new database views/tables to external consumers via API endpoints.
 
-![](docs/media/dab-logo.png)
+**Do I need to deploy code?** Usually NO. The code deployment is only needed if the upstream Data API Builder repository has bug fixes we need to merge. Configuration changes are done directly in Azure.
 
-## About Data API builder
+---
 
-Data API builder (DAB) is an open-source, no-code tool that creates secure, full-featured REST and GraphQL endpoints for your database. It’s a CRUD data API engine that runs in a container—on Azure, any other cloud, or on-premises. DAB is built for developers with integrated tooling, telemetry, and other productivity features.
+## 🚀 How to Add a New Entity (Table/View) to the API
 
-```mermaid
-erDiagram
-    DATA_API_BUILDER ||--|{ DATA_API : "Provides"
-    DATA_API_BUILDER {
-        container true "Microsoft Container Repository"
-        open-source true "MIT license / any cloud or on-prem."
-        objects true "Supports: Table / View / Stored Procedure"
-        developer true "Swagger / Nitro (fka Banana Cake Pop)"
-        otel true "Open Telemetry / Structured Logs / Health Endpoints"
-        security true "EntraId / EasyAuth / OAuth / JWT / Anonymous"
-        cache true "Level1 (in-memory) / Level2 (redis)"
-        policy true "Item policy / Database policy / Claims policy"
-        hot_reload true "Dynamically controllable log levels"
+### Step 1: Create the Database View
+
+1. Create your view in your **local** or **dev/test** `BetenboughDW` database
+2. **CRITICAL**: The view MUST be in the `[data-api]` schema
+3. Note the EXACT case of your view name and all column names (case-sensitivity matters!)
+
+Example:
+```sql
+CREATE VIEW [data-api].[MyNewEntity] AS
+SELECT 
+    EntityId,
+    EntityName,
+    CreatedDate
+FROM SomeSourceTable
+```
+
+> **Important:** You're developing against a local or dev/test BetenboughDW database. Production changes will be applied later in Step 5.
+
+### Step 2: Set Up Local Development Environment
+
+1. **Copy the config template to create your local config:**
+   ```powershell
+   cd src\Service
+   Copy-Item dab-config.jsontemplate dab-config.json
+   ```
+   
+2. **Edit `dab-config.json` and update the connection string** (line 5) to point to your local or development database:
+   ```json
+   "connection-string": "YOUR_LOCAL_CONNECTION_STRING_HERE"
+   ```
+   
+   > **Note:** The `dab-config.json` file is git-ignored, so your local credentials won't be committed.
+
+### Step 3: Add Your Entity to the Configuration
+
+Edit your local `dab-config.json` and add your new entity to the `"entities"` section.
+
+#### ⚠️ CRITICAL: Case Sensitivity Rules
+
+- **Database object names** (tables, views, columns) are **case-sensitive**
+- They MUST match EXACTLY as defined in the database
+- Entity names in the config should also follow the same casing
+
+#### Example Entity Configuration:
+
+```json
+"entities": {
+  "MyNewEntity": {
+    "source": {
+      "object": "data-api.MyNewEntity",
+      "type": "table",
+      "key-fields": [ "EntityId" ]
+    },
+    "graphql": {
+      "enabled": true,
+      "type": {
+        "singular": "MyNewEntity",
+        "plural": "MyNewEntities"
+      }
+    },
+    "rest": { "enabled": true },
+    "permissions": [
+      {
+        "role": "anonymous",
+        "actions": [ { "action": "*" } ]
+      }
+    ],
+    "relationships": {
+      "RelatedEntity": {
+        "cardinality": "one",
+        "target.entity": "RelatedEntityName",
+        "source.fields": [ "RelatedEntityId" ],
+        "target.fields": [ "RelatedEntityId" ]
+      }
     }
-    DATA_API ||--o{ DATASOURCE : "Queries"
-    DATA_API {
-        REST true "$select / $filter / $orderby"
-        GraphQL true "relationships / multiple mutations"
+  }
+}
+```
+
+#### Understanding the Configuration:
+
+- **`source.object`**: Must be `"data-api.YourViewName"` (schema.object format)
+- **`source.type`**: Use `"table"` for both tables and views
+- **`key-fields`**: The primary key or unique identifier column(s)
+- **`graphql.type.singular`**: The name used in GraphQL for a single item
+- **`graphql.type.plural`**: The name used in GraphQL for collections
+- **`permissions`**: Set to `"anonymous"` with `"*"` actions for public access
+- **`relationships`**: Optional - defines how this entity relates to others
+
+### Step 4: Test Locally
+
+1. **Run the API locally:**
+   ```powershell
+   cd src\Service
+   dotnet run
+   ```
+
+2. **Test with Postman:**
+   
+   **REST API:**
+   - GET all: `http://localhost:5000/api/MyNewEntity`
+   - GET by ID: `http://localhost:5000/api/MyNewEntity/EntityId/123`
+   - Filter: `http://localhost:5000/api/MyNewEntity?$filter=EntityName eq 'Test'`
+
+   **GraphQL API:**
+   - Endpoint: `http://localhost:5000/graphql`
+   - Example Query:
+     ```graphql
+     {
+       myNewEntities {
+         entityId
+         entityName
+         createdDate
+       }
+     }
+     ```
+
+3. **Verify case sensitivity:**
+   - Test different casing in your requests to ensure everything matches exactly
+   - If you get "entity not found" errors, double-check your casing
+
+### Step 5: Deploy to Production
+
+Once your local testing is successful:
+
+1. **Update the template file for future developers:**
+   - Copy ONLY the `"entities"` section from your `dab-config.json`
+   - Paste it into `src\Service\dab-config.jsontemplate` (replacing the existing `"entities"` section)
+   - Commit and push this change to the repository
+
+2. **⚠️ CRITICAL: Apply changes to BOTH production databases:**
+   
+   The production API reads from `BetenboughDW_DWSnapshot`, which is refreshed nightly from `BetenboughDW`. To avoid breaking the API, you must update BOTH databases:
+
+   **a) Update BetenboughDW (source database):**
+   - Execute your `CREATE VIEW` script on the production `BetenboughDW` database
+   - Ensure it's in the `[data-api]` schema
+   - This ensures the view persists after the nightly refresh
+
+   **b) Update BetenboughDW_DWSnapshot (API database):**
+   - Execute the SAME `CREATE VIEW` script on the `BetenboughDW_DWSnapshot` database
+   - Ensure it's in the `[data-api]` schema
+   - This makes the view immediately available to the API
+
+   > **Warning:** If you only update BetenboughDW, the production API will break until the next nightly refresh! Always update both databases.
+
+3. **Update the Azure Web App configuration:**
+   - Go to Azure Portal → `production-betenbough-dataapi-laqdtbvq5xlpc` Web App
+   - In the left menu, find **Development Tools** → **App Service Editor (Preview)**
+   - Navigate to `dab-config.json`
+   - Replace the `"entities"` section with your updated entities section
+   - **Save the file**
+
+4. **Restart the Web App:**
+   - Go back to the Web App's Overview page
+   - Click the **Restart** button at the top
+   - Wait for the restart to complete (~30 seconds)
+
+5. **Test in Production:**
+   - REST: `https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/api/MyNewEntity`
+   - GraphQL: `https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/graphql`
+
+---
+
+## 🛠️ Prerequisites
+
+Before you start, ensure you have:
+
+- [ ] **.NET 8.0 SDK** installed ([Download](https://dotnet.microsoft.com/download/dotnet/8.0))
+- [ ] **Visual Studio 2022** or **VS Code** (optional, but helpful)
+- [ ] **Access to BetenboughDW database** (to create views and test)
+- [ ] **Access to Azure Portal** (to edit Web App configuration)
+- [ ] **Postman** or similar API testing tool ([Download](https://www.postman.com/downloads/))
+- [ ] **SQL Server Management Studio** or **Azure Data Studio** (for database work)
+
+---
+
+## 📁 Repository Structure
+
+```
+src/Service/
+├── dab-config.jsontemplate   ← Template config (source-controlled)
+└── dab-config.json           ← Your local config (git-ignored)
+
+.github/workflows/
+└── production-betenbough-dataapi-appserviceplan-laqdtbvq5xlpc.yml   ← CI/CD pipeline
+```
+
+---
+
+## 🔄 When Does Code Deployment Happen?
+�️ Understanding the Database Structure
+
+**Two Production Databases:**
+- **BetenboughDW** - The source database where changes should be made
+- **BetenboughDW_DWSnapshot** - A nightly snapshot that the API actually queries
+
+**The Nightly Refresh:**
+- Every night, `BetenboughDW_DWSnapshot` is refreshed from `BetenboughDW`
+- Any views/tables in `BetenboughDW` will automatically appear in the snapshot after the refresh
+
+**Why Update Both Databases?**
+- If you only update `BetenboughDW`, the API won't see your changes until tomorrow's refresh
+- If you only update `BetenboughDW_DWSnapshot`, your changes will be overwritten tonight
+- **Always update both** to ensure immediate availability and persistence
+
+---
+
+## 🐛 Common Issues & Troubleshooting
+
+### Issue: Production API broken after deployment
+
+**Cause:** View was only created in `BetenboughDW`, not in `BetenboughDW_DWSnapshot`
+
+**Solution:**
+- Execute your `CREATE VIEW` script on `BetenboughDW_DWSnapshot` immediately
+- The API will work as soon as the Web App is restarted
+- Remember: always update BOTH databases going forward
+
+### Issue: "Entity not found" or API returns 404
+
+**Cause:** Case sensitivity mismatch
+
+**Solution:**
+- Verify the view exists in the `[data-api]` schema in `BetenboughDW_DWSnapshot`re)
+- For typical entity additions/modifications, you **DO NOT** need to trigger a deployment
+
+---
+
+## 🐛 Common Issues & Troubleshooting
+
+### Issue: "Entity not found" or API returns 404
+
+**Cause:** Case sensitivity mismatch
+
+**Solution:**
+- Verify the view exists in the `[data-api]` schema
+- Check that `source.object` matches EXACTLY: `"data-api.ViewName"`
+- Confirm column names in `key-fields` match the database exactly (case-sensitive)
+
+### Issue: "Column does not exist" errors
+
+**Cause:** Column name casing doesn't match database
+
+**Solution:**
+- Query the database to see exact column names:
+  ```sql
+  SELECT COLUMN_NAME 
+  FROM INFORMATION_SCHEMA.COLUMNS 
+  WHERE TABLE_SCHEMA = 'data-api' 
+    AND TABLE_NAME = 'YourViewName'
+  ```
+- Update your config to match exactly
+
+### Issue: Changes not reflected after restart
+
+**Cause:** Browser cache or Web App didn't restart properly
+
+**Solution:**
+- Clear browser cache or use Postman (no cache)
+- In Azure Portal, check the Web App logs to confirm restart
+- Wait 30-60 seconds after restart before testing
+
+### Issue: Local development connection fails
+
+**Cause:** Connection string authentication method
+
+**Solution:**
+- For local development, you may need to use SQL authentication instead of `ActiveDirectoryInteractive`
+- Example local connection string:
+  ```
+  Data Source=localhost;Initial Catalog=BetenboughDW;User ID=yourusername;Password=yourpassword;
+  ```
+
+### Issue: Relationship not working in GraphQL
+
+**Cause:** Incorrect field mapping or cardinality
+
+**Solution:**
+- Verify `source.fields` and `target.fields` column names are correct (case-sensitive!)
+- Ensure the target entity exists in the config
+- Check cardinality: use `"one"` for foreign key to primary key, `"many"` for one-to-many
+
+---
+
+## 📖 API Usage Examples
+
+### REST API
+
+The REST API is available at `/api/EntityName`
+
+**Get all entities:**
+```http
+GET https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/api/Homesites
+```
+
+**Get by primary key:**
+```http
+GET https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/api/Homesites/HomesiteId/12345
+```
+
+**Filter with OData:**
+```http
+GET https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/api/Homesites?$filter=PhaseId eq 100
+```
+
+**Select specific fields:**
+```http
+GET https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/api/Homesites?$select=HomesiteId,Address
+```
+
+**Pagination:**
+```http
+GET https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/api/Homesites?$top=10&$skip=20
+```
+
+### GraphQL API
+
+The GraphQL endpoint is at `/graphql`
+
+**Endpoint:** 
+```
+https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/graphql
+```
+
+**Example Query:**
+```graphql
+{
+  homesites(filter: { phaseId: { eq: 100 } }) {
+    items {
+      homesiteId
+      address
+      phase {
+        phaseId
+        phaseName
+      }
+      floorPlan {
+        floorPlanId
+        planName
+      }
     }
-    DATASOURCE {
-        MS_SQL Supported
-        PostgreSQL Supported
-        Cosmos_DB Supported
-        MySQL Supported
-        SQL_DW Supported
+  }
+}
+```
+
+**With Relationships:**
+```graphql
+{
+  homesites {
+    items {
+      homesiteId
+      tasks {
+        items {
+          taskId
+          taskName
+        }
+      }
     }
-    CLIENT ||--o{ DATA_API : "Consumes"
-    CLIENT {
-        Transport HTTP "HTTP / HTTPS"
-        Syntax JSON "Standard payloads"
-        Mobile Supported "No requirement"
-        Web Supported "No requirement"
-        Desktop Supported "No requirement"
-        Language Any "No requirement"
-        Framework None "Not required"
-        Library None "Not required"
-        ORM None "Not required"
-        Driver None "Not required"
-    }
+  }
+}
 ```
 
-## Getting Started
+---
 
-Use the [Getting Started](https://learn.microsoft.com/azure/data-api-builder/get-started/get-started-with-data-api-builder) tutorial to quickly explore the core tools and concepts. It gives you hands-on experience with how DAB makes you more efficient by removing boilerplate code.
+## 🔐 Security & Permissions
 
-**1. Install the DAB CLI**
+**Development:**
+- [ ] Create view in `[data-api]` schema in local/dev BetenboughDW database
+- [ ] Note exact casing of view and column names
+- [ ] Copy `dab-config.jsontemplate` to `dab-config.json` locally
+- [ ] Update local connection string in `dab-config.json`
+- [ ] Add entity configuration to local `dab-config.json`
+- [ ] Test locally with `dotnet run` from `src\Service`
+- [ ] Verify REST endpoint works in Postman
+- [ ] Verify GraphQL query works (if applicable)
 
-The [DAB CLI](https://aka.ms/dab/docs) is a cross-platform .NET tool. Install the [.NET SDK](https://get.dot.net) before running:
+**Source Control:**
+- [ ] Copy `entities` section back to `dab-config.jsontemplate`
+- [ ] Commit and push `dab-config.jsontemplate` changes
 
-```
-dotnet tool install microsoft.dataapibuilder -g
-```
+**Production Deployment:**
+- [ ] ⚠️ Execute `CREATE VIEW` on production `BetenboughDW` database
+- [ ] ⚠️ Execute SAME `CREATE VIEW` on production `BetenboughDW_DWSnapshot` database
+This allows unrestricted read/write access. If you need to restrict access in the future, consult the [Data API Builder permissions documentation](https://learn.microsoft.com/en-us/azure/data-api-builder/authorization).
 
-**2. Create your initial configuration file**
+---
 
-DAB requires a JSON configuration file. Edit manually or with the CLI. Use `dab --help` for syntax options.
+## 🤝 Getting Help
 
-```
-dab init
-  --database-type mssql
-  --connection-string "@env('my-connection-string')"
-  --host-mode development
-```
+- **Azure Data API Builder Documentation:** https://learn.microsoft.com/en-us/azure/data-api-builder/
+- **OData Query Syntax:** https://www.odata.org/documentation/
+- **GraphQL Documentation:** https://graphql.org/learn/
 
-**3. Add your first table**
+---
 
-DAB supports tables, views, and stored procedures. It works with SQL Server, Azure Cosmos DB, PostgreSQL, MySQL, and SQL Data Warehouse. Security is engine-level, but permissions are per entity.
+## 📝 Quick Reference Checklist
 
-```
-dab add Actor
-  --source "dbo.Actor"
-  --permissions "anonymous:*"
-```
+When adding a new entity, follow this checklist:
 
-**4. Run Data API builder**
+- [ ] Create view in `[data-api]` schema in production database
+- [ ] Note exact casing of view and column names
+- [ ] Copy `dab-config.jsontemplate` to `dab-config.json` locally
+- [ ] Update local connection string in `dab-config.json`
+- [ ] Add entity configuration to local `dab-config.json`
+- [ ] Test locally with `dotnet run` from `src\Service`
+- [ ] Verify REST endpoint works in Postman
+- [ ] Verify GraphQL query works (if applicable)
+- [ ] Copy `entities` section back to `dab-config.jsontemplate`
+- [ ] Commit and push `dab-config.jsontemplate` changes
+- [ ] Update `dab-config.json` in Azure App Service Editor
+- [ ] Restart Azure Web App
+- [ ] Test production endpoints
 
-In `production`, DAB runs in a container. In `development`, it’s self-hosted locally with hot reload, Swagger, and Nitro (fka Banana Cake Pop) support.
+---
 
-```
-dab start
-```
+## ⚙️ Why is This Forked?
 
-> **Note**: Before you run `dab start`, make sure your connection string is stored in an environment variable called `my-connection-string`. This is required for `@env('my-connection-string')` in your config file to work. The easiest way is to create a `.env` file with `name=value` pairs—DAB will load these automatically at runtime.
+This repository is forked from the official Azure Data API Builder because:
+- The upstream repository doesn't include deployment artifacts for Azure Web App
+- We needed a solution that deploys as a standard .NET application to Azure App Service
+- The fork allows us to maintain our custom CI/CD pipeline
 
-**5. Access your data source**
-
-By default, DAB enables both REST and GraphQL. REST supports `$select`, `$filter`, and `$orderBy`. GraphQL uses config-defined relationships.
-
-```
-GET http://localhost:5000/api/Actor
-```
-
-### Walk-through video
-
-<a href="https://www.youtube.com/watch?v=xAlaoDQolLw" target="_blank">
-  <img src="https://img.youtube.com/vi/xAlaoDQolLw/0.jpg" alt="Play Video" width="280" />
-</a>
-
-Demo source code: [startrek](https://aka.ms/dab/startrek)
-
-## Overview
-
-| Category       | Features |
-|----------------|----------|
-| **Database Objects** | • NoSQL collections<br>• RDBMS tables, views, stored procedures |
-| **Data Sources** | • SQL Server & Azure SQL<br>• Azure Cosmos DB<br>• PostgreSQL<br>• MySQL |
-| **REST** | • `$select` for projection<br>• `$filter` for filtering<br>• `$orderBy` for sorting |
-| **GraphQL** | • Relationship navigation<br>• Data aggregation<br>• Multiple mutations |
-| **Telemetry** | • Structured logs<br>• OpenTelemetry<br>• Application Insights<br>• Health endpoints |
-| **Advanced** | • Pagination<br>• Level 1 (in-memory) cache |
-| **Authentication** | • OAuth2/JWT<br>• EasyAuth<br>• Entra ID |
-| **Authorization** | • Role-based support<br>• Entity permissions<br>• Database policies |
-| **Developer** | • Cross-platform CLI<br>• Swagger (REST)<br>• Nitro [previously Banana Cake Pop] (GraphQL)<br>• Open Source<br>• Configuration Hot Reload |
-
-## How does it work?
-
-This diagram shows how DAB works. DAB dynamically creates endpoints from your config file. It translates HTTP requests to SQL, returns JSON, and auto-pages results.
-
-```mermaid
-sequenceDiagram
-    actor Client
-
-    box Data API builder (DAB)
-        participant Endpoint
-        participant QueryBuilder
-    end
-
-    participant Configuration as Configuration File
-
-    box Data Source
-        participant DB
-    end
-
-    Endpoint->>Endpoint: Start
-    activate Endpoint
-        Endpoint->>Configuration: Request
-        Configuration-->>Endpoint: Configuration
-        Endpoint->>DB: Request
-        DB-->>Endpoint: Metadata
-            Note over Endpoint, DB: Some configuration is validated against the metadata
-        Endpoint-->>Endpoint: Configure
-    deactivate Endpoint
-    Client-->>Endpoint: HTTP Request
-    activate Endpoint
-        critical
-        Endpoint-->>Endpoint: Authenticate
-        Endpoint-->>Endpoint: Authorize
-        end
-        Endpoint->>QueryBuilder: Request
-        QueryBuilder-->>Endpoint: SQL
-        alt Cache
-            Endpoint-->>Endpoint: Use Cache
-        else Query
-            Endpoint-->>DB: Request
-            Note over Endpoint, DB: Query is automatically throttled and results paginated
-            DB->>Endpoint: Results
-            Note over Endpoint, DB: Results are automatically cached for use in next request
-        end
-        Endpoint->>Client: HTTP 200
-    deactivate Endpoint
-```
-
-Because DAB is stateless, it can scale up or out using any container size. It builds a feature-rich API like you would from scratch—but now you don’t have to.
-
-## Additional Resources
-
-- [Online Documentation](https://aka.ms/dab/docs)  
-- [Official Samples](https://aka.ms/dab/samples)  
-- [Known Issues](https://learn.microsoft.com/azure/data-api-builder/known-issues)  
-- [Feature Roadmap](https://github.com/Azure/data-api-builder/discussions/1377)
-
-#### References
-
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines/blob/vNext/Guidelines.md)  
-- [Microsoft Azure REST API Guidelines](https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md)  
-- [GraphQL Specification](https://graphql.org/)
-
-### How to Contribute
-
-To contribute, see these documents:
-
-- [Code of Conduct](./CODE_OF_CONDUCT.md)  
-- [Security](./SECURITY.md)  
-- [Contributing](./CONTRIBUTING.md)
-
-### License
-
-**Data API builder for Azure Databases** is licensed under the MIT License. See [LICENSE](./LICENSE.txt) for details.
-
-### Third-Party Component Notice
-
-Nitro (fka Banana Cake Pop by ChilliCream, Inc.) may optionally store work in its cloud service via your ChilliCream account. Microsoft is not affiliated with or endorsing this service. Use at your discretion.
-
-### Trademarks
-
-This project may use trademarks or logos. Use of Microsoft trademarks must follow Microsoft’s [Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks). Use of third-party marks is subject to their policies.
+The deployment pipeline handles building and publishing the application, but configuration management remains manual through the Azure Portal's App Service Editor.
