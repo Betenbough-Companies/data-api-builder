@@ -75,6 +75,12 @@
           "source.fields": [ "HomesiteId" ],
           "target.fields": [ "HomesiteId" ]
         },
+        "VPOs": {
+          "cardinality": "many",
+          "target.entity": "VPOs",
+          "source.fields": [ "HomesiteId" ],
+          "target.fields": [ "HomesiteId" ]
+        },
         "City": {
           "cardinality": "one",
           "target.entity": "Cities",
@@ -500,6 +506,35 @@
           "actions": [ { "action": "*" } ]
         }
       ]
+    },
+    "VPOs": {
+      "source": {
+        "object": "data-api.VPOs",
+        "type": "table",
+        "key-fields": [ "VPOID" ]
+      },
+      "graphql": {
+        "enabled": true,
+        "type": {
+          "singular": "VPO",
+          "plural": "VPOs"
+        }
+      },
+      "rest": { "enabled": true },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [ { "action": "*" } ]
+        }
+      ],
+      "relationships": {
+        "Homesite": {
+          "cardinality": "one",
+          "target.entity": "Homesites",
+          "source.fields": [ "HomesiteId" ],
+          "target.fields": [ "HomesiteId" ]
+        }
+      }
     }
   }
 }

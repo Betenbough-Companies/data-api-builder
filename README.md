@@ -205,7 +205,16 @@ src/Service/
 ---
 
 ## 🔄 When Does Code Deployment Happen?
-�️ Understanding the Database Structure
+
+Code deployment is **rarely needed**. The GitHub Actions workflow will automatically deploy when:
+- Changes are pushed to the repository that affect the application code
+- Upstream Data API Builder bug fixes are merged into the fork
+
+For typical entity additions/modifications, you **DO NOT** need to trigger a deployment. Configuration changes are made directly in Azure via the App Service Editor.
+
+---
+
+## 🗄️ Understanding the Database Structure
 
 **Two Production Databases:**
 - **BetenboughDW** - The source database where changes should be made
@@ -238,19 +247,7 @@ src/Service/
 **Cause:** Case sensitivity mismatch
 
 **Solution:**
-- Verify the view exists in the `[data-api]` schema in `BetenboughDW_DWSnapshot`re)
-- For typical entity additions/modifications, you **DO NOT** need to trigger a deployment
-
----
-
-## 🐛 Common Issues & Troubleshooting
-
-### Issue: "Entity not found" or API returns 404
-
-**Cause:** Case sensitivity mismatch
-
-**Solution:**
-- Verify the view exists in the `[data-api]` schema
+- Verify the view exists in the `[data-api]` schema in `BetenboughDW_DWSnapshot`
 - Check that `source.object` matches EXACTLY: `"data-api.ViewName"`
 - Confirm column names in `key-fields` match the database exactly (case-sensitive)
 
@@ -296,6 +293,53 @@ src/Service/
 - Verify `source.fields` and `target.fields` column names are correct (case-sensitive!)
 - Ensure the target entity exists in the config
 - Check cardinality: use `"one"` for foreign key to primary key, `"many"` for one-to-many
+
+---
+
+## 🔧 Debugging Production Directly
+
+### ⚠️ EMERGENCY USE ONLY - SECURITY CRITICAL ⚠️
+
+Sometimes you may need to debug the production Data API directly without going through Azure API Management (APIM). This should **ONLY** be done in emergency situations and with extreme caution.
+
+#### How to Enable Direct Access:
+
+1. Go to **Azure Portal** → `production-betenbough-dataapi-laqdtbvq5xlpc` Web App
+2. In the left menu, navigate to **Settings** → **Networking**
+3. In the **Public network access** section, click the link next to "Public network access"
+4. Change the **"Unmatched rule action"** from `Deny` to **`Allow`**
+5. Save the changes
+
+The Data API endpoints can now be queried directly without a subscription key.
+
+#### 🚨 CRITICAL SECURITY WARNING 🚨
+
+**This action bypasses all authentication provided by APIM!**
+
+- **ANYONE on the internet** can query, read, and write to your database
+- All rate limiting and monitoring is bypassed
+- This creates a severe security vulnerability
+
+#### Mandatory Steps After Debugging:
+
+**AS SOON AS DEBUGGING IS COMPLETE**, you **MUST** immediately restore security:
+
+1. Return to **Azure Portal** → `production-betenbough-dataapi-laqdtbvq5xlpc` Web App
+2. Navigate to **Settings** → **Networking** → **Public network access**
+3. Change the **"Unmatched rule action"** back to **`Deny`**
+4. Save the changes
+5. Verify that direct access is blocked by attempting to access an endpoint without a subscription key
+
+> **Best Practice:** Set a reminder or alarm for 15-30 minutes when you enable direct access to ensure you don't forget to re-enable security. Document the time you enabled it and notify your team.
+
+#### Safer Alternatives:
+
+Before enabling direct access, consider these safer debugging approaches:
+
+- Use APIM's built-in **Test** feature in the Azure Portal
+- Review APIM **Analytics** and **Logs** for request/response details
+- Enable **Application Insights** on the Web App for detailed logging
+- Test against a **non-production environment** if available
 
 ---
 
@@ -380,6 +424,68 @@ https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/graphql
 
 ## 🔐 Security & Permissions
 
+### Current Permissions Configuration
+
+All entities in this API are currently configured with **anonymous access** and **unrestricted read/write** permissions:
+
+```json
+"permissions": [
+  {
+    "role": "anonymous",
+    "actions": [ { "action": "*" } ]
+  }
+]
+```
+
+This allows any client to read and write data without authentication when accessing the Web App directly.
+
+### Accessing via Azure API Management (APIM)
+
+**For external consumers**, the API is exposed through **Azure API Management**, which requires authentication via subscription keys.
+
+#### How to Get a Subscription Key:
+
+1. Go to **Azure Portal** → **API Management service**
+2. Navigate to **Subscriptions** in the left menu
+3. Create a new subscription or regenerate an existing key
+4. Copy the **Primary key** or **Secondary key**
+
+#### How to Use the Subscription Key:
+
+Consumers must include the subscription key in **every request** using one of these methods:
+
+**Option 1: Request Header (Recommended)**
+```http
+GET https://your-apim-gateway.azure-api.net/api/Homesites
+Ocp-Apim-Subscription-Key: YOUR_SUBSCRIPTION_KEY_HERE
+```
+
+**Option 2: Query String Parameter**
+```http
+GET https://your-apim-gateway.azure-api.net/api/Homesites?subscription-key=YOUR_SUBSCRIPTION_KEY_HERE
+```
+
+> **Note:** Always use the APIM gateway URL for external consumers, not the direct Web App URL. The APIM gateway provides rate limiting, monitoring, and security features.
+
+### Restricting Access (Future Enhancement)
+
+If you need to implement more granular permissions (e.g., read-only access, role-based access control), consult the [Data API Builder permissions documentation](https://learn.microsoft.com/en-us/azure/data-api-builder/authorization).
+
+---
+
+## 🤝 Getting Help
+
+- **Azure Data API Builder Documentation:** https://learn.microsoft.com/en-us/azure/data-api-builder/
+- **OData Query Syntax:** https://www.odata.org/documentation/
+- **GraphQL Documentation:** https://graphql.org/learn/
+- **Azure API Management Documentation:** https://learn.microsoft.com/en-us/azure/api-management/
+
+---
+
+## 📝 Quick Reference Checklist
+
+When adding a new entity, follow this checklist:
+
 **Development:**
 - [ ] Create view in `[data-api]` schema in local/dev BetenboughDW database
 - [ ] Note exact casing of view and column names
@@ -397,35 +503,10 @@ https://production-betenbough-dataapi-laqdtbvq5xlpc.azurewebsites.net/graphql
 **Production Deployment:**
 - [ ] ⚠️ Execute `CREATE VIEW` on production `BetenboughDW` database
 - [ ] ⚠️ Execute SAME `CREATE VIEW` on production `BetenboughDW_DWSnapshot` database
-This allows unrestricted read/write access. If you need to restrict access in the future, consult the [Data API Builder permissions documentation](https://learn.microsoft.com/en-us/azure/data-api-builder/authorization).
-
----
-
-## 🤝 Getting Help
-
-- **Azure Data API Builder Documentation:** https://learn.microsoft.com/en-us/azure/data-api-builder/
-- **OData Query Syntax:** https://www.odata.org/documentation/
-- **GraphQL Documentation:** https://graphql.org/learn/
-
----
-
-## 📝 Quick Reference Checklist
-
-When adding a new entity, follow this checklist:
-
-- [ ] Create view in `[data-api]` schema in production database
-- [ ] Note exact casing of view and column names
-- [ ] Copy `dab-config.jsontemplate` to `dab-config.json` locally
-- [ ] Update local connection string in `dab-config.json`
-- [ ] Add entity configuration to local `dab-config.json`
-- [ ] Test locally with `dotnet run` from `src\Service`
-- [ ] Verify REST endpoint works in Postman
-- [ ] Verify GraphQL query works (if applicable)
-- [ ] Copy `entities` section back to `dab-config.jsontemplate`
-- [ ] Commit and push `dab-config.jsontemplate` changes
 - [ ] Update `dab-config.json` in Azure App Service Editor
 - [ ] Restart Azure Web App
-- [ ] Test production endpoints
+- [ ] Test production endpoints (direct Web App URL)
+- [ ] Test APIM endpoints with subscription key (for external consumers)
 
 ---
 
